@@ -83,6 +83,18 @@
             "type": "string"
           },
           {
+            "name": "total_check_ins",
+            "type": "u32"
+          },
+          {
+            "name": "streak",
+            "type": "u32"
+          },
+          {
+            "name": "last_check_in_day",
+            "type": "i64"
+          },
+          {
             "name": "checked_in_at",
             "type": "i64"
           }
