@@ -1,40 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import type { WalletName } from "@solana/wallet-adapter-base";
+
+type PendingSelect = {
+  name: WalletName;
+  resolve: () => void;
+  reject: (err: Error) => void;
+} | null;
 
 export default function WalletSelector() {
-  const { wallets, select, connect, disconnect, connected, publicKey, disconnecting } = useWallet();
-  const [connecting, setConnecting] = useState(false);
+  const { wallets, wallet, select, connect, disconnect, connected, publicKey, connecting, disconnecting } = useWallet();
   const [error, setError] = useState<string | null>(null);
+  const pendingSelectRef = useRef<PendingSelect>(null);
+
+  // select() only updates the provider state asynchronously; connect() must
+  // not run until the provider has switched adapter and attached listeners.
+  useEffect(() => {
+    const pending = pendingSelectRef.current;
+    if (!pending) return;
+    if (wallet?.adapter.name === pending.name) {
+      pendingSelectRef.current = null;
+      pending.resolve();
+    }
+  }, [wallet]);
+
+  function selectAndWait(name: WalletName): Promise<void> {
+    if (wallet?.adapter.name === name) return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      pendingSelectRef.current = { name, resolve, reject };
+      select(name);
+      setTimeout(() => {
+        if (pendingSelectRef.current) {
+          pendingSelectRef.current = null;
+          reject(new Error(`Timed out waiting for ${name} to be selected.`));
+        }
+      }, 5000);
+    });
+  }
 
   async function handleConnect(walletName: string) {
     setError(null);
-    setConnecting(true);
     try {
-      await new Promise((r) => setTimeout(r, 300));
-
-      const wall =
-        wallets.find((w) => w.adapter.name.toLowerCase() === walletName.toLowerCase()) ??
+      const target =
+        wallets.find((w) => w.adapter.name === walletName) ??
         wallets.find((w) => w.adapter.name.toLowerCase().includes(walletName.toLowerCase()));
 
-      if (!wall) {
+      if (!target) {
         setError(`${walletName} not detected. Install the ${walletName} extension in this browser, then refresh.`);
         return;
       }
 
-      select(wall.adapter.name);
+      await selectAndWait(target.adapter.name);
       await connect();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setConnecting(false);
     }
   }
 
   async function handleDisconnect() {
     setError(null);
-    await disconnect();
+    try {
+      await disconnect();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   if (connected && publicKey) {
