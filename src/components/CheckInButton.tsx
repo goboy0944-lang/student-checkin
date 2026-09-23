@@ -6,7 +6,7 @@ import {
   useWallet,
   useAnchorWallet,
 } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import WalletSelector from "./WalletSelector";
 import { Program, AnchorProvider, Idl } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import idl from "@/idl/student_checkin.json";
@@ -32,7 +32,7 @@ function toDayLabel(day: BNLike): string {
 
 export default function CheckInButton() {
   const { connection } = useConnection();
-  const { connected, publicKey, disconnect } = useWallet();
+  const { connected, publicKey } = useWallet();
   const anchorWallet = useAnchorWallet();
   const [name, setName] = useState("");
   const [sig, setSig] = useState<string | null>(null);
@@ -105,7 +105,7 @@ export default function CheckInButton() {
     <div style={{ fontFamily: "sans-serif", maxWidth: 480, margin: "2rem auto", padding: "0 1rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2>Check In</h2>
-        <WalletMultiButton />
+        <WalletSelector />
       </div>
 
       {record ? (
@@ -140,17 +140,6 @@ export default function CheckInButton() {
       >
         {loading ? "Submitting..." : connected ? "Check In" : "Connect wallet first"}
       </button>
-
-      {connected && (
-        <div style={{ marginTop: "0.5rem" }}>
-          <button
-            onClick={disconnect}
-            style={{ padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", background: "none", border: "1px solid #ccc", borderRadius: 6 }}
-          >
-            Disconnect
-          </button>
-        </div>
-      )}
 
       {sig && (
         <p style={{ marginTop: "1rem" }}>
