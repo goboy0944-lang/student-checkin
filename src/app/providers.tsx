@@ -1,6 +1,7 @@
 "use client";
 
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
+import "@solana/wallet-adapter-react-ui/styles.css";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
