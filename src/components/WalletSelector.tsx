@@ -56,7 +56,7 @@ export default function WalletSelector() {
 
   const options: { name: string; border: string }[] = [
     { name: "Phantom", border: "1.5px solid #ab9ff2" },
-    { name: "Solflare", border: "1.5px solid #ffd76a" },
+    { name: "MetaMask", border: "1.5px solid #f6851b" },
   ];
 
   return (
