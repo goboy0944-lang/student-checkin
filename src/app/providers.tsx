@@ -21,7 +21,7 @@ export function Providers({ children }: { children: ReactNode }) {
         });
         await client.registerWallet();
       } catch (err) {
-        console.error("MetaMask wallet registration failed:", err);
+        console.error("MetaMask registration failed:", err);
       } finally {
         if (!cancelled) setReady(true);
       }
@@ -36,7 +36,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
+      <WalletProvider wallets={wallets} autoConnect={false}>
         {children}
       </WalletProvider>
     </ConnectionProvider>

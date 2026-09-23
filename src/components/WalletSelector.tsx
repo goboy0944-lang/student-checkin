@@ -4,55 +4,67 @@ import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
 
-type PendingSelect = {
-  name: WalletName;
-  resolve: () => void;
-  reject: (err: Error) => void;
-} | null;
+const OPTIONS: { name: string; border: string }[] = [
+  { name: "Phantom", border: "1.5px solid #ab9ff2" },
+  { name: "MetaMask", border: "1.5px solid #f6851b" },
+];
 
 export default function WalletSelector() {
-  const { wallets, wallet, select, connect, disconnect, connected, publicKey, connecting, disconnecting } = useWallet();
+  const {
+    wallets,
+    wallet,
+    select,
+    connect,
+    disconnect,
+    connected,
+    publicKey,
+    connecting,
+    disconnecting,
+  } = useWallet();
+
   const [error, setError] = useState<string | null>(null);
-  const pendingSelectRef = useRef<PendingSelect>(null);
 
-  // select() only updates the provider state asynchronously; connect() must
-  // not run until the provider has switched adapter and attached listeners.
+  const connectRef = useRef(connect);
+  connectRef.current = connect;
+
+  const pendingConnectRef = useRef<WalletName | null>(null);
+  const errorRef = useRef<{ show: (msg: string) => void }>({ show: () => {} });
+  errorRef.current.show = (msg) => setError(msg);
+
   useEffect(() => {
-    const pending = pendingSelectRef.current;
-    if (!pending) return;
-    if (wallet?.adapter.name === pending.name) {
-      pendingSelectRef.current = null;
-      pending.resolve();
-    }
-  }, [wallet]);
+    const selectedName = wallet?.adapter.name ?? null;
+    if (!selectedName || pendingConnectRef.current !== selectedName) return;
 
-  function selectAndWait(name: WalletName): Promise<void> {
-    if (wallet?.adapter.name === name) return Promise.resolve();
-    return new Promise<void>((resolve, reject) => {
-      pendingSelectRef.current = { name, resolve, reject };
-      select(name);
-      setTimeout(() => {
-        if (pendingSelectRef.current) {
-          pendingSelectRef.current = null;
-          reject(new Error(`Timed out waiting for ${name} to be selected.`));
-        }
-      }, 5000);
+    pendingConnectRef.current = null;
+    connectRef.current().catch((err: unknown) => {
+      errorRef.current.show(err instanceof Error ? err.message : String(err));
     });
+  }, [wallet, connected]);
+
+  function findAdapter(walletName: string) {
+    return (
+      wallets.find((w) => w.adapter.name === walletName) ??
+      wallets.find((w) => w.adapter.name.toLowerCase().includes(walletName.toLowerCase()))
+    );
   }
 
   async function handleConnect(walletName: string) {
     setError(null);
-    try {
-      const target =
-        wallets.find((w) => w.adapter.name === walletName) ??
-        wallets.find((w) => w.adapter.name.toLowerCase().includes(walletName.toLowerCase()));
 
+    if (connected && wallet?.adapter.name === walletName) return;
+
+    if (!wallet || wallet.adapter.name !== walletName) {
+      const target = findAdapter(walletName);
       if (!target) {
         setError(`${walletName} not detected. Install the ${walletName} extension in this browser, then refresh.`);
         return;
       }
+      pendingConnectRef.current = target.adapter.name;
+      select(target.adapter.name);
+      return;
+    }
 
-      await selectAndWait(target.adapter.name);
+    try {
       await connect();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -85,15 +97,10 @@ export default function WalletSelector() {
     );
   }
 
-  const options: { name: string; border: string }[] = [
-    { name: "Phantom", border: "1.5px solid #ab9ff2" },
-    { name: "MetaMask", border: "1.5px solid #f6851b" },
-  ];
-
   return (
     <div style={{ fontFamily: "sans-serif", display: "flex", flexDirection: "column", gap: "0.35rem", alignItems: "flex-end" }}>
       <div style={{ display: "flex", gap: "0.5rem" }}>
-        {options.map((opt) => (
+        {OPTIONS.map((opt) => (
           <button
             key={opt.name}
             onClick={() => handleConnect(opt.name)}
